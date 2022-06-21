@@ -1,0 +1,228 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Master stack which creates all required nested stacks
+
+Parameters:
+  TemplatePath:
+    Type: String
+    Description: S3 Bucket Path where the templates are stored
+  Owner:
+    Type: String
+    Default: Innovax Systems
+  Project:
+    Type: String
+    Default: OpsCentral-SIT
+  EnvironmentName:
+    Description: An environment name that is prefixed to resource names
+    Type: String
+    Default: SIT
+  CreatedBy:
+    Description: An environment name that is prefixed to resource names
+    Type: String
+    Default: CloudFormation  
+  VpcCIDR:
+    Description: Please enter the IP range (CIDR notation) for this VPC
+    Type: String
+    AllowedPattern: "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})"
+    ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x. (e.g. 172.21.1.0/24)
+    Default: 172.86.0.0/16
+  ## Public Subnet
+  PublicSubnet1CIDR:
+    Description: Please enter the IP range (CIDR notation) for the public subnet in the first Availability Zone
+    Type: String
+    AllowedPattern: "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{2})"
+    Default: 172.86.10.0/24
+  PublicSubnet2CIDR:
+    Description: Please enter the IP range (CIDR notation) for the public subnet in the first Availability Zone
+    Type: String
+    AllowedPattern: "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{2})"
+    Default: 172.86.30.0/24
+  PublicSubnet3CIDR:
+    Description: Please enter the IP range (CIDR notation) for the public subnet in the first Availability Zone
+    Type: String
+    AllowedPattern: "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{2})"
+    Default: 172.86.50.0/24  
+  ## Private Subnet
+  PrivateSubnet1CIDR:
+    Description: Please enter the IP range (CIDR notation) for the public subnet in the first Availability Zone
+    Type: String
+    AllowedPattern: "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{2})"
+    Default: 172.86.20.0/24
+  PrivateSubnet2CIDR:
+    Description: Please enter the IP range (CIDR notation) for the public subnet in the first Availability Zone
+    Type: String
+    AllowedPattern: "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{2})"
+    Default: 172.86.40.0/24
+  PrivateSubnet3CIDR:
+    Description: Please enter the IP range (CIDR notation) for the public subnet in the first Availability Zone
+    Type: String
+    AllowedPattern: "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{2})"
+    Default: 172.86.60.0/24
+  ClusterName:
+    Type: String
+    Description: Name of cluster 
+    Default: sit-cluster
+  KeyName:
+    Description: Name of an existing EC2 KeyPair to enable SSH access to the instance
+    Type: AWS::EC2::KeyPair::KeyName
+    ConstraintDescription: must be the name of an existing EC2 KeyPair. 
+    Default: sit-opscentral-key
+  #TagPrefix:
+  #  Type: String
+  #  Description: Enter Prefix that should be used for Tags.
+  #MasterUsername: 
+  #  Default: 'Innovax'
+  #  Type: String
+  #  Description: Specify database root username
+  #MasterUserPassword: 
+  #  Default: 'Isadmin1888$'
+  #  Type: String
+  #  Description: Specify database password
+  #DBName:
+  #  Default: 'Ops_Innovax'
+  #  Type: String
+  #  Description: Database name
+  #RDSDBEngine: 
+  #    Type: String
+  #    Description: Database Engine Version
+  #    Default: aurora
+  #    AllowedValues:
+  #      - aurora
+  #      - aurora-mysql
+  #      - aurora-postgresql
+ 
+Resources:
+  VpcStack:
+    Type: "AWS::CloudFormation::Stack"
+    Properties:
+      TemplateURL:
+        Fn::Sub: "https://innovax-sit-cf-template.s3.ap-southeast-1.amazonaws.com/vpc-stack.yaml"
+      Parameters:
+        VpcCIDR: !Ref VpcCIDR
+        PublicSubnet1CIDR: !Ref PublicSubnet1CIDR
+        PublicSubnet2CIDR: !Ref PublicSubnet2CIDR
+        PublicSubnet3CIDR: !Ref PublicSubnet3CIDR
+        PrivateSubnet1CIDR: !Ref PrivateSubnet1CIDR
+        PrivateSubnet2CIDR: !Ref PrivateSubnet2CIDR
+        PrivateSubnet3CIDR: !Ref PrivateSubnet3CIDR
+      Tags:
+        - Key: Name
+          Value: !Join [ "", [ !Ref "AWS::StackName", "-Vpc-stack" ] ]
+        - Key: Owner
+          Value: !Ref Owner
+        - Key: Project
+          Value: !Ref Project
+        - Key: Parent
+          Value: !Ref "AWS::StackName"
+        - Key: Environment
+          Value: !Ref EnvironmentName
+        - Key: Created By
+          Value: !Ref CreatedBy
+  SecurityStack:
+    Type: "AWS::CloudFormation::Stack"
+    DependsOn: 
+      - VpcStack
+    Properties:
+      TemplateURL:
+        Fn::Sub: "https://innovax-sit-cf-template.s3.ap-southeast-1.amazonaws.com/secgroup-stack.yaml"
+      Parameters:
+        VPCID: !GetAtt VpcStack.Outputs.SitVPC
+      Tags:
+        - Key: Name
+          Value: !Join [ "", [ !Ref "AWS::StackName", "-SecGroup-stack" ] ]
+        - Key: Owner
+          Value: !Ref Owner
+        - Key: Project
+          Value: !Ref Project
+        - Key: Parent
+          Value: !Ref "AWS::StackName"
+        - Key: Environment
+          Value: !Ref EnvironmentName
+        - Key: Created By
+          Value: !Ref CreatedBy
+          
+  Ec2Stack:
+    Type: "AWS::CloudFormation::Stack"
+    DependsOn: 
+      - SecurityStack
+    Properties:
+      TemplateURL:
+        Fn::Sub: "https://innovax-sit-cf-template.s3.ap-southeast-1.amazonaws.com/ec2-stack.yaml"
+      Parameters:
+        VPCID: !GetAtt VpcStack.Outputs.SitVPC
+        ClusterName: !Ref ClusterName
+        PublicSubnets: !GetAtt VpcStack.Outputs.SitPublicSubnets
+        PrivateSubnets: !GetAtt VpcStack.Outputs.SitPrivateSubnets
+        SecurityGroups: !GetAtt SecurityStack.Outputs.SecurityGroups
+      Tags:
+        - Key: Name
+          Value: !Join [ "", [ !Ref "AWS::StackName", "-Ec2-stack" ] ]
+        - Key: Owner
+          Value: !Ref Owner
+        - Key: Project
+          Value: !Ref Project
+        - Key: Parent
+          Value: !Ref "AWS::StackName"
+        - Key: Environment
+          Value: !Ref EnvironmentName
+        - Key: Created By
+          Value: !Ref CreatedBy
+  EfsStack:
+    Type: "AWS::CloudFormation::Stack"
+    DependsOn: 
+      - VpcStack
+      - SecurityStack
+    Properties:
+      TemplateURL:
+        Fn::Sub: "https://innovax-sit-cf-template.s3.ap-southeast-1.amazonaws.com/efs-stack.yaml"
+      Parameters:
+        VPCID: !GetAtt VpcStack.Outputs.SitVPC
+        ClusterName: !Ref ClusterName
+        PublicSubnets: !GetAtt VpcStack.Outputs.SitPublicSubnets
+        PrivateSubnets: !GetAtt VpcStack.Outputs.SitPrivateSubnets
+        SecurityGroups: !GetAtt SecurityStack.Outputs.SecurityGroups
+      Tags:
+        - Key: Name
+          Value: !Join [ "", [ !Ref "AWS::StackName", "-Efs-stack" ] ]
+        - Key: Owner
+          Value: !Ref Owner
+        - Key: Project
+          Value: !Ref Project
+        - Key: Parent
+          Value: !Ref "AWS::StackName"
+        - Key: Environment
+          Value: !Ref EnvironmentName
+        - Key: Created By
+          Value: !Ref CreatedBy
+  RdsStack:
+    Type: "AWS::CloudFormation::Stack"
+    DependsOn:
+      - VpcStack 
+      - SecurityStack
+    Properties:
+      TemplateURL:
+        Fn::Sub: "https://innovax-sit-cf-template.s3.ap-southeast-1.amazonaws.com/rds-stack.yaml"
+      Parameters:
+        VPCID: !GetAtt VpcStack.Outputs.SitVPC
+        ClusterName: !Ref ClusterName
+        PublicSubnets: !GetAtt VpcStack.Outputs.SitPublicSubnets
+        PrivateSubnets: !GetAtt VpcStack.Outputs.SitPrivateSubnets
+        SecurityGroups: !GetAtt SecurityStack.Outputs.SecurityGroups
+        #MasterUsername: !Ref MasterUsername
+        #MasterUserPassword: !Ref MasterUserPassword
+        #DBName: !Ref DBName
+        #RDSDBEngine: !Ref RDSDBEngine 
+        #RDSEngineMode: !Ref RDSEngineMode
+        #RDSInstaceType: !Ref RDSInstaceType
+      Tags:
+        - Key: Name
+          Value: !Join [ "", [ !Ref "AWS::StackName", "-Rds-stack" ] ]
+        - Key: Owner
+          Value: !Ref Owner
+        - Key: Project
+          Value: !Ref Project
+        - Key: Parent
+          Value: !Ref "AWS::StackName"
+        - Key: Environment
+          Value: !Ref EnvironmentName
+        - Key: Created By
+          Value: !Ref CreatedBy

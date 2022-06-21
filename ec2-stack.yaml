@@ -1,0 +1,407 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Metadata: 
+  License: Apache-2.0
+Description: 'AWS CloudFormation Sample Template VPC_EC2_Instance_With_Multiple_Static_IPAddresses:
+  Sample template showing how to create an instance with a single network interface
+  and multiple static IP addresses in an existing VPC. It assumes you have already
+  created a VPC. **WARNING** This template creates an Amazon EC2 instance. You will
+  be billed for the AWS resources used if you create a stack from this template.'
+Parameters:
+  Owner:
+    Type: String
+    Default: Innovax Systems
+  Project:
+    Type: String
+    Default: OpsCentral-SIT
+  EnvironmentName:
+    Description: An environment name that is prefixed to resource names
+    Type: String
+    Default: SIT
+  CreatedBy:
+    Description: An environment name that is prefixed to resource names
+    Type: String
+    Default: CloudFormation  
+  VpcStackName:
+    Description: The name of the stack that exports the values
+    Type: String
+    Default: sit-cluster-VpcStack-144ZCSEFE3MN0
+  SecurityGroupStackName:
+    Description: The name of the stack that exports the values
+    Type: String
+    Default: sit-cluster-SecurityStack-1EYLHUZSOVKK0
+  KeyName:
+    Description: Name of an existing EC2 KeyPair to enable SSH access to the instance
+    Type: AWS::EC2::KeyPair::KeyName
+    ConstraintDescription: must be the name of an existing EC2 KeyPair. 
+    Default: sit-opscentral-key
+  InstanceType:
+    Description: WebServer EC2 instance type
+    Type: String
+    Default: t2.micro
+    AllowedValues: [t1.micro, t2.nano, t2.micro, t2.small, t2.medium, t2.large, m1.small,
+      m1.medium, m1.large, m1.xlarge, m2.xlarge, m2.2xlarge, m2.4xlarge, m3.medium,
+      m3.large, m3.xlarge, m3.2xlarge, m4.large, m4.xlarge, m4.2xlarge, m4.4xlarge,
+      m4.10xlarge, c1.medium, c1.xlarge, c3.large, c3.xlarge, c3.2xlarge, c3.4xlarge,
+      c3.8xlarge, c4.large, c4.xlarge, c4.2xlarge, c4.4xlarge, c4.8xlarge, g2.2xlarge,
+      g2.8xlarge, r3.large, r3.xlarge, r3.2xlarge, r3.4xlarge, r3.8xlarge, i2.xlarge,
+      i2.2xlarge, i2.4xlarge, i2.8xlarge, d2.xlarge, d2.2xlarge, d2.4xlarge, d2.8xlarge,
+      hi1.4xlarge, hs1.8xlarge, cr1.8xlarge, cc2.8xlarge, cg1.4xlarge]
+    ConstraintDescription: must be a valid EC2 instance type.
+  VPCID:
+    Type: AWS::EC2::VPC::Id
+    Description: Enter a valid VPC Id
+  ClusterName:
+    Type: String
+    Description: Name of cluster
+  SecurityGroups:
+    Type: CommaDelimitedList
+    Description: List of securitygroups ids
+  PublicSubnets:
+    Type: CommaDelimitedList
+    Description: List of public subnet ids
+  PrivateSubnets:
+    Type: CommaDelimitedList
+    Description: List of private subnet ids
+Mappings:
+  AWSInstanceType2Arch:
+    t2.micro: #Free Tier
+      Arch: HVM64
+    t2.small:
+      Arch: HVM64
+    t2.medium:
+      Arch: HVM64
+    t2.large:
+      Arch: HVM64
+  AWSRegionArch2AMI:
+    ap-southeast-1:
+      PV64: ami-0e7b58f112f3eae18
+      HVM64: ami-0e7b58f112f3eae18
+      HVMG2: ami-0e7b58f112f3eae18
+Resources:
+  ## 
+  ##      Create 5 EC2 Instances (WEB, SOLR, VPN, APP, PBX)              
+  ##
+  WebEc2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      AvailabilityZone: ap-southeast-1a
+      DisableApiTermination: 'false'
+      HibernationOptions: 
+        Configured: 'false'
+      ImageId: ami-0e7b58f112f3eae18
+      InstanceType: t2.micro
+      KeyName: !Ref 'KeyName'
+      PrivateIpAddress: '172.86.10.5'
+      SubnetId: 
+        Fn::ImportValue: !Sub '${VpcStackName}-SitPublicSubnet1'
+      SecurityGroupIds:
+        - Fn::ImportValue: !Sub '${SecurityGroupStackName}-OnPremiseToJumphostSSHSecurityGroupID'
+        - Fn::ImportValue: !Sub '${SecurityGroupStackName}-AppToWebSecurityGroupID'
+        - Fn::ImportValue: !Sub '${SecurityGroupStackName}-PbxToWebSecurityGroupID'
+        - Fn::ImportValue: !Sub '${SecurityGroupStackName}-JumphostToEC2SSHSecurityGroupID'
+        - Fn::ImportValue: !Sub '${SecurityGroupStackName}-JumphostToEC2PingSecurityGroupID'
+      Tags:
+      - Key: Name
+        Value: !Join [ "", [ !Ref "AWS::StackName", "-Web-Ec2" ] ]
+      - Key: Owner
+        Value: !Ref Owner
+      - Key: Project
+        Value: !Ref Project
+      - Key: Environment
+        Value: !Ref EnvironmentName
+      - Key: Created By
+        Value: !Ref CreatedBy
+      # Does not include user data
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1 # Root Volume
+          Ebs:
+            VolumeType: gp2
+            VolumeSize: 50 # Change Accordingly
+            DeleteOnTermination: 'false'
+            Encrypted: 'true'
+  VpnEc2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      AvailabilityZone: ap-southeast-1b
+      DisableApiTermination: 'false'
+      HibernationOptions: 
+        Configured: 'false'
+      ImageId: ami-0e7b58f112f3eae18
+      InstanceType: t2.micro
+      KeyName: !Ref 'KeyName'
+      SubnetId: 
+        Fn::ImportValue: !Sub '${VpcStackName}-SitPublicSubnet2'
+      SecurityGroupIds:
+        - Fn::ImportValue: !Sub '${SecurityGroupStackName}-OnPremiseToJumphostSSHSecurityGroupID'
+        - Fn::ImportValue: !Sub '${SecurityGroupStackName}-AppToVpnSecurityGroupID'
+        - Fn::ImportValue: !Sub '${SecurityGroupStackName}-JumphostToEC2SSHSecurityGroupID'
+        - Fn::ImportValue: !Sub '${SecurityGroupStackName}-JumphostToEC2PingSecurityGroupID'
+        - Fn::ImportValue: !Sub '${SecurityGroupStackName}-VpnSecurityGroupID'
+      PrivateIpAddress: '172.86.30.5'
+      Tags:
+      - Key: Name
+        Value: !Join [ "", [ !Ref "AWS::StackName", "-Vpn-Ec2" ] ]
+      - Key: Owner
+        Value: !Ref Owner
+      - Key: Project
+        Value: !Ref Project
+      - Key: Environment
+        Value: !Ref EnvironmentName
+      - Key: Created By
+        Value: !Ref CreatedBy
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1 # Root Volume
+          Ebs:
+            VolumeType: gp2
+            VolumeSize: 50 # Change Accordingly
+            DeleteOnTermination: 'false'
+            Encrypted: 'true'
+  ## ELASTIC IP for VPN Server
+  InnovaxSITVpnPublicIP:
+    Type: AWS::EC2::EIP
+    DependsOn: VpnEc2Instance
+    Properties:
+      Domain: standard
+      InstanceId: !Ref VpnEc2Instance
+  ## ELASTIC IP for WEB Server
+  InnovaxSITWebPublicIP:
+    Type: AWS::EC2::EIP
+    DependsOn: WebEc2Instance
+    Properties:
+      Domain: standard
+      InstanceId: !Ref WebEc2Instance
+  PbxEc2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      AvailabilityZone: ap-southeast-1a
+      DisableApiTermination: 'false'
+      HibernationOptions: 
+        Configured: 'false'
+      ImageId: ami-0e7b58f112f3eae18
+      InstanceType: t2.small
+      KeyName: !Ref 'KeyName'
+      SubnetId: 
+        Fn::ImportValue: !Sub '${VpcStackName}-SitPublicSubnet1'
+      SecurityGroupIds:
+        - Fn::ImportValue: !Sub '${SecurityGroupStackName}-OnPremiseToJumphostSSHSecurityGroupID'
+        - Fn::ImportValue: !Sub '${SecurityGroupStackName}-AppToPbxSecurityGroupID'
+        - Fn::ImportValue: !Sub '${SecurityGroupStackName}-VpnToPbxSecurityGroupID'
+        - Fn::ImportValue: !Sub '${SecurityGroupStackName}-JumphostToEC2SSHSecurityGroupID'
+        - Fn::ImportValue: !Sub '${SecurityGroupStackName}-PbxSecurityGroupID'
+      PrivateIpAddress: '172.86.10.6'
+      Tags:
+      - Key: Name
+        Value: !Join [ "", [ !Ref "AWS::StackName", "-Pbx-Ec2" ] ]
+      - Key: Owner
+        Value: !Ref Owner
+      - Key: Project
+        Value: !Ref Project
+      - Key: Environment
+        Value: !Ref EnvironmentName
+      - Key: Created By
+        Value: !Ref CreatedBy
+      UserData:
+        Fn::Base64: 
+          !Sub |
+            #!/bin/bash
+            sudo yum install -y https://s3.ap-southeast-1.amazonaws.com/amazon-ssm-ap-southeast-1/latest/linux_amd64/amazon-ssm-agent.rpm
+            sudo yum install -y https://s3.ap-southeast-1.amazonaws.com/amazoncloudwatch-agent-ap-southeast-1/centos/amd64/latest/amazon-cloudwatch-agent.rpm
+            sudo yum install yum-utils -y
+            sudo yum groups install core base "Development Tools" -y
+            sudo yum install epel-release -y
+            sudo yum install unzip -y
+            sudo yum install mlocate -y
+            sudo yum install telnet -y
+            sudo yum install traceroute -y
+            sudo yum install wget -y 
+            sudo yum update -y
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1 # Root Volume
+          Ebs:
+            VolumeType: gp2
+            VolumeSize: 50 # Change Accordingly
+            DeleteOnTermination: 'false'
+            Encrypted: 'true'
+  InnovaxSITPbxPublicIP:
+    Type: AWS::EC2::EIP
+    DependsOn: PbxEc2Instance
+    Properties:
+      Domain: standard
+      InstanceId: !Ref PbxEc2Instance
+  AppEc2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      AvailabilityZone: ap-southeast-1a
+      DisableApiTermination: 'false'
+      HibernationOptions: 
+        Configured: 'false'
+      ImageId: ami-0760e3fd2cf30b276
+      InstanceType: t2.medium
+      KeyName: !Ref 'KeyName'
+      SubnetId: 
+        Fn::ImportValue: !Sub '${VpcStackName}-SitPrivateSubnet1'
+      SecurityGroupIds:
+        - Fn::ImportValue: !Sub '${SecurityGroupStackName}-WebToAppSecurityGroupID'
+        - Fn::ImportValue: !Sub '${SecurityGroupStackName}-PbxToAppSecurityGroupID'
+        - Fn::ImportValue: !Sub '${SecurityGroupStackName}-JumphostToEC2SSHSecurityGroupID'
+        - Fn::ImportValue: !Sub '${SecurityGroupStackName}-JumphostToEC2PingSecurityGroupID' 
+      PrivateIpAddress: '172.86.20.5'
+      Tags:
+      - Key: Name
+        Value: !Join [ "", [ !Ref "AWS::StackName", "-App-Ec2" ] ]
+      - Key: Owner
+        Value: !Ref Owner
+      - Key: Project
+        Value: !Ref Project
+      - Key: Environment
+        Value: !Ref EnvironmentName
+      - Key: Created By
+        Value: !Ref CreatedBy
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1 # Root Volume
+          Ebs:
+            VolumeType: gp2
+            VolumeSize: 50 # Change Accordingly
+            DeleteOnTermination: 'false'
+            Encrypted: 'true'
+  SolrEc2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      AvailabilityZone: ap-southeast-1b
+      DisableApiTermination: 'false'
+      HibernationOptions: 
+        Configured: 'false'
+      ImageId: ami-08c0c484a226141d1
+      InstanceType: t2.micro
+      KeyName: !Ref 'KeyName'
+      SubnetId: 
+        Fn::ImportValue: !Sub '${VpcStackName}-SitPrivateSubnet2'
+      SecurityGroupIds:
+        - Fn::ImportValue: !Sub '${SecurityGroupStackName}-AppToSolrSecurityGroupID'
+        - Fn::ImportValue: !Sub '${SecurityGroupStackName}-JumphostToEC2SSHSecurityGroupID'
+        - Fn::ImportValue: !Sub '${SecurityGroupStackName}-JumphostToEC2PingSecurityGroupID'
+      PrivateIpAddress: '172.86.40.5'
+      Tags:
+      - Key: Name
+        Value: !Join [ "", [ !Ref "AWS::StackName", "-Solr-Ec2" ] ]
+      - Key: Owner
+        Value: !Ref Owner
+      - Key: Project
+        Value: !Ref Project
+      - Key: Environment
+        Value: !Ref EnvironmentName
+      - Key: Created By
+        Value: !Ref CreatedBy
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1 # /dev/xvda - for amazon linux ami # Root Volume
+          Ebs:
+            VolumeType: gp2
+            VolumeSize: 50 # Change Accordingly
+            DeleteOnTermination: 'false'
+            Encrypted: 'true' 
+  JumphostEc2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      AvailabilityZone: ap-southeast-1c
+      DisableApiTermination: 'false'
+      HibernationOptions: 
+        Configured: 'false'
+      ImageId: ami-0801a1e12f4a9ccc0
+      InstanceType: t2.micro
+      KeyName: !Ref 'KeyName'
+      PrivateIpAddress: '172.86.50.5'
+      SubnetId: 
+        Fn::ImportValue: !Sub '${VpcStackName}-SitPublicSubnet3'
+      SecurityGroupIds:
+        - Fn::ImportValue: !Sub '${SecurityGroupStackName}-OnPremiseToJumphostSSHSecurityGroupID'
+        - Fn::ImportValue: !Sub '${SecurityGroupStackName}-JumphostToEC2SSHSecurityGroupID'
+        - Fn::ImportValue: !Sub '${SecurityGroupStackName}-JumphostVerifityPrivateSubnetEc2ID'
+        - Fn::ImportValue: !Sub '${SecurityGroupStackName}-JumphostVerifityPublicSubnetEc2ID'
+      Tags:
+      - Key: Name
+        Value: !Join [ "", [ !Ref "AWS::StackName", "-JumpHost-Ec2" ] ]
+      - Key: Owner
+        Value: !Ref Owner
+      - Key: Project
+        Value: !Ref Project
+      - Key: Environment
+        Value: !Ref EnvironmentName
+      - Key: Created By
+        Value: !Ref CreatedBy
+      # Does not include user data
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda # Root Volume
+          Ebs:
+            VolumeType: gp2
+            VolumeSize: 20 # Change Accordingly
+            DeleteOnTermination: 'false'
+            Encrypted: 'true'
+  WindowsJumphostEc2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      AvailabilityZone: ap-southeast-1c
+      DisableApiTermination: 'false'
+      HibernationOptions: 
+        Configured: 'false'
+      ImageId: ami-0828f782ee03b55e4
+      InstanceType: t2.micro
+      KeyName: !Ref 'KeyName'
+      PrivateIpAddress: '172.86.50.6'
+      SubnetId: 
+        Fn::ImportValue: !Sub '${VpcStackName}-SitPublicSubnet3'
+      SecurityGroupIds:
+        - Fn::ImportValue: !Sub '${SecurityGroupStackName}-OnPremiseToJumphostRDPSecurityGroupID'
+        - Fn::ImportValue: !Sub '${SecurityGroupStackName}-JumphostToEC2SSHSecurityGroupID'
+        - Fn::ImportValue: !Sub '${SecurityGroupStackName}-JumphostVerifityPrivateSubnetEc2ID'
+        - Fn::ImportValue: !Sub '${SecurityGroupStackName}-JumphostVerifityPublicSubnetEc2ID'
+
+      Tags:
+      - Key: Name
+        Value: !Join [ "", [ !Ref "AWS::StackName", "-WindowsJumpHost-Ec2" ] ]
+      - Key: Owner
+        Value: !Ref Owner
+      - Key: Project
+        Value: !Ref Project
+      - Key: Environment
+        Value: !Ref EnvironmentName
+      - Key: Created By
+        Value: !Ref CreatedBy
+      # Does not include user data
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1 # Root Volume
+          Ebs:
+            VolumeType: gp2
+            VolumeSize: 40 # Change Accordingly
+            DeleteOnTermination: 'false'
+            Encrypted: 'true'
+Outputs:
+  WebEc2Instance:
+    Value: !Ref 'WebEc2Instance'
+    Description: Instance Id of newly created Web instance
+    Export:
+      Name: !Sub ${AWS::StackName}-WebEc2Instance
+  VpnEc2Instance:
+    Value: !Ref 'VpnEc2Instance'
+    Description: Instance Id of newly created Vpn instance
+    Export:
+      Name: !Sub ${AWS::StackName}-VpnEc2Instance
+  PbxEc2Instance:
+    Value: !Ref 'PbxEc2Instance'
+    Description: Instance Id of newly created Pbx instance
+    Export:
+      Name: !Sub ${AWS::StackName}-PbxEc2Instance
+  AppEc2Instance:
+    Value: !Ref 'AppEc2Instance'
+    Description: Instance Id of newly created App instance
+    Export:
+      Name: !Sub ${AWS::StackName}-AppEc2Instance
+  SolrEc2Instance:
+    Value: !Ref 'SolrEc2Instance'
+    Description: Instance Id of newly created Solr instance
+    Export:
+      Name: !Sub ${AWS::StackName}-SolrEc2Instance
+  JumphostEc2Instance:
+    Value: !Ref 'JumphostEc2Instance'
+    Description: Instance Id of newly created Solr instance
+    Export:
+      Name: !Sub ${AWS::StackName}-JumphostEc2Instance

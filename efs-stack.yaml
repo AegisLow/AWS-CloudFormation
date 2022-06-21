@@ -1,0 +1,145 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Create Elastic File System For OpsCentral SIT
+Parameters:
+  # Ownership
+  Owner:
+    Type: String
+    Default: Innovax Systems
+  Project:
+    Type: String
+    Default: OpsCentral-SIT
+  EnvironmentName:
+    Description: An environment name that is prefixed to resource names
+    Type: String
+    Default: SIT
+  CreatedBy:
+    Description: An environment name that is prefixed to resource names
+    Type: String
+    Default: CloudFormation  
+  # Network - Import Value from VPC stack
+  VpcStackName:
+    Description: The name of the stack that exports the values
+    Type: String
+    Default: sit-cluster-VpcStack-144ZCSEFE3MN0
+  SecurityGroupStackName:
+    Description: The name of the stack that exports the values
+    Type: String
+    Default: sit-cluster-SecurityStack-1EYLHUZSOVKK0
+  # EFS
+  VPCID:
+    Type: AWS::EC2::VPC::Id
+    Description: Enter a valid VPC Id
+  ClusterName:
+    Type: String
+    Description: Name of cluster
+  SecurityGroups:
+    Type: CommaDelimitedList
+    Description: List of securitygroups ids
+  PublicSubnets:
+    Type: CommaDelimitedList
+    Description: List of public subnet ids
+  PrivateSubnets:
+    Type: CommaDelimitedList
+    Description: List of private subnet ids
+  PerformanceMode:
+    Type: String
+    Default: generalPurpose
+    AllowedValues:
+    - generalPurpose
+    - maxIO
+Resources:
+  FileSystem:
+    Type: AWS::EFS::FileSystem
+    Properties:
+      FileSystemTags:
+      - Key: Name
+        Value: !Join [ "", [ !Ref "AWS::StackName", "-EFS" ] ]
+      - Key: Owner
+        Value: !Ref Owner
+      - Key: Project
+        Value: !Ref Project
+      - Key: Environment
+        Value: !Ref EnvironmentName
+      - Key: Created By
+        Value: !Ref CreatedBy
+      PerformanceMode: !Ref PerformanceMode
+      Encrypted: 'true'
+      #AvailabilityZoneName: String
+      #BackupPolicy: 
+      #  BackupPolicy
+      #BypassPolicyLockoutSafetyCheck: Boolean
+      #Encrypted: Boolean
+      #FileSystemPolicy: Json
+      #KmsKeyId: String
+      #LifecyclePolicies: 
+      #  - LifecyclePolicy
+      #ProvisionedThroughputInMibps: Double
+      #ThroughputMode: String
+  MountTargetForAZ1: # PBX recording Public
+    Type: AWS::EFS::MountTarget
+    Properties:
+      FileSystemId: !Ref FileSystem
+      SubnetId: 
+        Fn::ImportValue: !Sub '${VpcStackName}-SitPublicSubnet1'
+      SecurityGroups:
+        - Fn::ImportValue: !Sub '${SecurityGroupStackName}-FileSystemSecurityGroupID'
+Outputs:
+  FileSystem:
+    Value: !Ref FileSystem
+    Description: File System for OpsCentral
+    Export:
+      Name: !Sub ${AWS::StackName}-FileSystem
+  PerformanceMode:
+    Value: !Ref PerformanceMode
+    Description: EFS Mode
+    Export:
+      Name: !Sub ${AWS::StackName}-PerformanceMode
+  MountTargetForAZ1:
+    Value: !Ref MountTargetForAZ1
+    Description: MountTarget for Availability Zone 1
+    Export:
+      Name: !Sub ${AWS::StackName}-MountTargetForAZ1
+#  MountTargetDns1:
+#    Description: MountTarget 1
+#    Value: !GetAtt MountTarget1.DNSName
+#  MountTargetDns2:
+#    Description: MountTarget 2
+#    Value: !GetAtt MountTarget1.DNSName
+#  MountTargetDns3:
+#    Description: MountTarget 3
+#    Value: !GetAtt MountTarget1.DNSName
+#Metadata:
+#  AWS::CloudFormation::Interface:
+#    ParameterGroups:
+#    - Label:
+#        default: Ownership
+#      Parameters:
+#      - Owner
+#      - Project
+#      - DeleteAfter
+#    - Label:
+#        default: Network Configuration
+#      Parameters:
+#      - VPC
+#      - Subnet1
+#      - Subnet2
+#      - Subnet3
+#    - Label:
+#        default: EFS Configuration
+#      Parameters:
+#      - PerformanceMode
+#    ParameterLabels:
+#      Owner:
+#        default: Team or Individual Owner
+#      DeleteAfter:
+#        default: Delete After Date
+#      VPC:
+#        default: VPC ID
+#      Subnet1:
+#        default: Subnet 1
+#      Subnet2:
+#        default: Subnet 2
+#      Subnet3:
+#        default: Subnet 3
+#      PerformanceMode:
+#        default: EFS Performance Mode

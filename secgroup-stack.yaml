@@ -1,0 +1,833 @@
+Description: Create security groups and IAM roles
+
+Parameters:
+  VPCID:
+    Type: AWS::EC2::VPC::Id
+    Description: Enter a valid VPC Id
+Resources:
+  ## Web To App        
+  WebToAppSecurityGroup: 
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupName: WebToAppSecurityGroup
+      GroupDescription: Web To App 
+      VpcId: !Ref VPCID
+      SecurityGroupIngress:
+        ## To App Change the CidrIp to App VM IP ##
+        - IpProtocol: tcp
+          FromPort: 8080
+          ToPort: 8080
+          CidrIp: 172.86.10.5/32
+        - IpProtocol: tcp 
+          FromPort: 8109
+          ToPort: 8109
+          CidrIp: 172.86.10.5/32
+        - IpProtocol: tcp 
+          FromPort: 8082
+          ToPort: 8082
+          CidrIp: 172.86.10.5/32
+        - IpProtocol: tcp ## For Socket IO port
+          FromPort: 16535
+          ToPort: 16535
+          CidrIp: 172.86.10.5/32
+        - IpProtocol: tcp ## Per tenenat usange port 
+          FromPort: 16501
+          ToPort: 16510
+          CidrIp: 172.86.10.5/32
+  ## App to Web
+  AppToWebSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupName: AppToWebSecurityGroup
+      GroupDescription: App To Web
+      VpcId: !Ref VPCID
+      SecurityGroupIngress:
+        ## To Web Change the CidrIp to Web VM IP ##
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 172.86.20.5/32
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 172.86.20.5/32
+  ## App to PBX
+  AppToPbxSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupName: AppToPbxSecurityGroup
+      GroupDescription: App To Pbx
+      VpcId: !Ref VPCID
+      SecurityGroupIngress:
+        ## To Web Change the CidrIp to Web VM IP ##
+        - IpProtocol: tcp
+          FromPort: 5038
+          ToPort: 5038
+          CidrIp: 172.86.20.5/32
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 172.86.20.5/32
+  ## App to VPN
+  AppToVpnSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupName: AppToVpnSecurityGroup
+      GroupDescription: App To Vpn
+      VpcId: !Ref VPCID
+      SecurityGroupIngress:
+        ## To Web Change the CidrIp to Web VM IP ##
+        - IpProtocol: tcp
+          FromPort: 41160
+          ToPort: 41160
+          CidrIp: 172.86.20.5/32
+  ## App to SOLR
+  AppToSolrSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupName: AppToSolrSecurityGroup
+      GroupDescription: App To Solr
+      VpcId: !Ref VPCID
+      SecurityGroupIngress:
+        ## To Web Change the CidrIp to Web VM IP ##
+        - IpProtocol: tcp
+          FromPort: 8983
+          ToPort: 8983
+          CidrIp: 172.86.20.5/32
+  PbxSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupName: PbxSecurityGroup
+      GroupDescription: PBX Group
+      VpcId: !Ref VPCID
+      SecurityGroupIngress:
+        ## To App Change the CidrIp to App VM IP ##     
+        - IpProtocol: tcp
+          FromPort: 5038
+          ToPort: 5038
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: udp
+          FromPort: 5060
+          ToPort: 5060
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: udp
+          FromPort: 10000
+          ToPort: 20000
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: icmp
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp ## Allow SSH
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp ## Allow SSH
+          FromPort: 8089
+          ToPort: 8089
+          CidrIp: 0.0.0.0/0 
+        - IpProtocol: udp ## Allow SSH
+          FromPort: 3478
+          ToPort: 3478
+          CidrIp: 0.0.0.0/0 
+        - IpProtocol: udp ## Allow SSH
+          FromPort: 41161
+          ToPort: 41161
+          CidrIp: 103.22.170.212/32
+  ## Pbx to App
+  PbxToAppSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupName: PbxToAppSecurityGroup
+      GroupDescription: PBX to App
+      VpcId: !Ref VPCID
+      SecurityGroupIngress:
+        ## To App Change the CidrIp to App VM IP ##     
+        - IpProtocol: tcp
+          FromPort: 27001
+          ToPort: 27001
+          CidrIp: 172.86.10.6/32
+        - IpProtocol: tcp
+          FromPort: 27100
+          ToPort: 27100
+          CidrIp: 172.86.10.6/32
+        - IpProtocol: tcp
+          FromPort: 7739
+          ToPort: 7739
+          CidrIp: 172.86.10.6/32
+  ## Pbx to Web
+  PbxToWebSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupName: PbxToWebSecurityGroup
+      GroupDescription: PBX to Web
+      VpcId: !Ref VPCID
+      SecurityGroupIngress:
+        ## To App Change the CidrIp to App VM IP ##     
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 172.86.10.6/32
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 172.86.10.6/32
+  VpnSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupName: VpnSecurityGroup
+      GroupDescription: Open VPN Group
+      VpcId: !Ref VPCID
+      SecurityGroupIngress:
+        ## To PBX Change the CidrIp to PBX VM IP ##
+        - IpProtocol: tcp
+          FromPort: 41160
+          ToPort: 41160
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: icmp
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: udp
+          FromPort: 10000
+          ToPort: 20000
+          CidrIp: 172.86.10.6/32
+        - IpProtocol: udp
+          FromPort: 41161
+          ToPort: 41161
+          CidrIp: 172.86.10.6/32 
+  ## VPN to PBX
+  VpnToPbxSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupName: VpnToPbxSecurityGroup
+      GroupDescription: Open VPN to PBX
+      VpcId: !Ref VPCID
+      SecurityGroupIngress:
+        ## To PBX Change the CidrIp to PBX VM IP ##
+        - IpProtocol: udp
+          FromPort: 5060
+          ToPort: 5060
+          CidrIp: 172.86.30.5/32
+        - IpProtocol: udp
+          FromPort: 10000
+          ToPort: 20000
+          CidrIp: 172.86.30.5/32
+        - IpProtocol: udp
+          FromPort: 41160
+          ToPort: 41160
+          CidrIp: 172.86.30.5/32
+  SolrSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupName: SolrSecurityGroup
+      GroupDescription: Solr Group
+      VpcId: !Ref VPCID
+      SecurityGroupIngress:
+        ## To App Change the CidrIp to App VM IP ##
+        - IpProtocol: tcp
+          FromPort: 8983
+          ToPort: 8983
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: icmp
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 0.0.0.0/0
+        ## Allow HTTP port 80
+        - IpProtocol: tcp 
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        ## Allow HTTPS port 443
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+  JumpHostSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupName: JumpHostSecurityGroup
+      GroupDescription: JumpHost Group
+      VpcId: !Ref VPCID
+      SecurityGroupIngress:
+        ## To App Change the CidrIp to App VM IP ##
+        - IpProtocol: tcp ## Allow SSH
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0 
+        - IpProtocol: icmp
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp 
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: -1 ## Allow All for Jumphost
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 0.0.0.0/0
+  JumpHostToAllSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties: 
+      GroupName: JumpHostToAllSecurityGroup
+      GroupDescription: JumpHost Security Group
+      VpcId: !Ref VPCID
+      SecurityGroupIngress:
+        ## Allow SSH from JumpHost
+        - IpProtocol: tcp 
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 172.86.50.5/32
+        ## Allow All from NAT Gateway  
+        - IpProtocol: -1
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 172.86.50.217/32
+  WindowsJumpHostSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupName: WindowsJumpHostSecurityGroup
+      GroupDescription: JumpHost Group
+      VpcId: !Ref VPCID
+      SecurityGroupIngress:
+        ## To App Change the CidrIp to App VM IP ##
+        - IpProtocol: tcp ## Allow SSH
+          FromPort: 3389
+          ToPort: 3389
+          CidrIp: 0.0.0.0/0 
+        - IpProtocol: icmp
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp 
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: -1 ## Allow All for Jumphost
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 0.0.0.0/0
+  WindowsJumpHostToAllSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties: 
+      GroupName: WindowsJumpHostToAllSecurityGroup
+      GroupDescription: JumpHost Security Group
+      VpcId: !Ref VPCID
+      SecurityGroupIngress:
+        ## Allow SSH from JumpHost
+        - IpProtocol: tcp 
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 172.86.50.5/32
+        ## Allow All from NAT Gateway  
+        - IpProtocol: -1
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 172.86.50.217/32
+  AppToDbSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties: 
+      GroupName: AppToDbSecurityGroup
+      GroupDescription: RDS Security Group
+      VpcId: !Ref VPCID
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          CidrIp: 172.86.20.5/32
+        - IpProtocol: icmp
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 172.86.20.5/32
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          CidrIp: 172.86.50.5/32
+        - IpProtocol: icmp
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 172.86.50.5/32 
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          CidrIp: 172.86.50.6/32
+        - IpProtocol: icmp
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 172.86.50.6/32  
+  ## On Premise SSH to Jumphost
+  OnPremiseToJumphostSSHSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties: 
+      GroupName: OnPremiseToJumphostSSHSecurityGroup
+      GroupDescription: On-Premise SSH To Jumphost Security Group
+      VpcId: !Ref VPCID
+      SecurityGroupIngress:
+        ## SG Office
+        - IpProtocol: tcp  
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 103.224.165.101/32
+        - IpProtocol: tcp 
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 103.224.165.101/32
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 103.224.165.101/32
+        ## MY Office
+        - IpProtocol: tcp 
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 175.141.135.61/32
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 175.141.135.61/32
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 175.141.135.61/32
+        ## Allow Shaun IP
+        - IpProtocol: tcp 
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 180.75.253.14/32
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 180.75.253.14/32
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 180.75.253.14/32
+        - IpProtocol: udp
+          FromPort: 5060
+          ToPort: 5060
+          CidrIp: 180.75.253.14/32
+        - IpProtocol: udp
+          FromPort: 41160
+          ToPort: 41170
+          CidrIp: 180.75.253.14/32
+        - IpProtocol: udp
+          FromPort: 10000
+          ToPort: 20000
+          CidrIp: 180.75.253.14/32
+         ## Allow Roberto IP
+        - IpProtocol: udp
+          FromPort: 5060
+          ToPort: 5060
+          CidrIp: 103.22.170.212/32
+        - IpProtocol: udp ## Allow Roberto IP
+          FromPort: 41160
+          ToPort: 41170
+          CidrIp: 103.22.170.212/32
+        - IpProtocol: udp ## Allow Roberto IP
+          FromPort: 10000
+          ToPort: 20000
+          CidrIp: 103.22.170.212/32
+        - IpProtocol: udp ## Allow Roberto IP
+          FromPort: 41160
+          ToPort: 41170
+          CidrIp: 103.22.170.210/32
+        - IpProtocol: udp 
+          FromPort: 5060
+          ToPort: 5060
+          CidrIp: 103.22.170.210/32
+        - IpProtocol: udp
+          FromPort: 10000
+          ToPort: 20000
+          CidrIp: 103.22.170.210/32
+        ## My Public IP
+        - IpProtocol: tcp  
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 115.135.199.5/32
+        - IpProtocol: tcp 
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 115.135.199.5/32
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 115.135.199.5/32
+  ## On Premise RDP to Jumphost
+  OnPremiseToJumphostRDPSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties: 
+      GroupName: OnPremiseToJumphostRDPSecurityGroup
+      GroupDescription: On-Premise RDP To Jumphost Security Group
+      VpcId: !Ref VPCID
+      SecurityGroupIngress:
+        - IpProtocol: tcp  ## SG Office
+          FromPort: 3389
+          ToPort: 3389
+          CidrIp: 103.224.165.101/32
+        - IpProtocol: tcp ## MY Office
+          FromPort: 3389
+          ToPort: 3389
+          CidrIp: 175.141.135.61/32
+        - IpProtocol: tcp ## Allow MY IPs
+          FromPort: 3389
+          ToPort: 3389
+          CidrIp: 115.135.199.5/32
+        - IpProtocol: tcp ## Allow MY IPs
+          FromPort: 3389
+          ToPort: 3389
+          CidrIp: 180.75.252.112/32
+  ## Jumphost SSH to EC2
+  JumphostToEC2SSHSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties: 
+      GroupName: JumphostToEC2SSHSecurityGroup
+      GroupDescription: Jumphost SSH to EC2 Security Group
+      VpcId: !Ref VPCID
+      SecurityGroupIngress:
+        - IpProtocol: tcp  ## SSH from Linux jumphost
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 172.86.50.5/32
+        - IpProtocol: tcp  ## SSH from windows jumphost
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 172.86.50.6/32
+  ## Jumphost RDP to EC2
+  JumphostToEC2RDPSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties: 
+      GroupName: JumphostToEC2RDPSecurityGroup
+      GroupDescription: Jumphost RDP to EC2 Security Group
+      VpcId: !Ref VPCID
+      SecurityGroupIngress:
+        - IpProtocol: tcp ## Rdp from windows jumphost
+          FromPort: 3389
+          ToPort: 3389
+          CidrIp: 172.86.50.6/32
+  JumphostToEC2PingSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties: 
+      GroupName: JumphostToEC2PingSecurityGroup
+      GroupDescription: Jumphost Ping to EC2 Security Group
+      VpcId: !Ref VPCID
+      SecurityGroupIngress:
+        - IpProtocol: icmp ## Ping From Linux Jumphost
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 172.86.50.5/32
+        - IpProtocol: icmp ## Ping From Whindows Jumphost
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 172.86.50.6/32
+        - IpProtocol: tcp ## Verify App from 443
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 172.86.50.6/32
+        - IpProtocol: tcp ## Verify App from 443
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 172.86.50.5/32
+        - IpProtocol: tcp ## Verify for Httpd 
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 172.86.50.5/32
+        - IpProtocol: tcp ## Verify for Httpd 
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 172.86.50.6/32
+        - IpProtocol: tcp ## Verify for Tomcat  
+          FromPort: 8080
+          ToPort: 8080
+          CidrIp: 172.86.50.5/32
+        - IpProtocol: tcp ## Verify for Tomcat  
+          FromPort: 8080
+          ToPort: 8080
+          CidrIp: 172.86.50.6/32
+        - IpProtocol: tcp
+          FromPort: 8983
+          ToPort: 8983
+          CidrIp: 172.86.50.5/32
+        - IpProtocol: tcp
+          FromPort: 8983
+          ToPort: 8983
+          CidrIp: 172.86.50.6/32
+        - IpProtocol: -1 ## All From Whindows Jumphost
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 172.86.50.6/32
+  JumphostVerifityPrivateSubnetEc2:
+    Type: AWS::EC2::SecurityGroup
+    Properties: 
+      GroupName: JumphostVerifityPrivateSubnetEc2
+      GroupDescription: Jumphost verifty private subnet EC2 Security Group
+      VpcId: !Ref VPCID
+      SecurityGroupIngress:
+        - IpProtocol: tcp ## Verify App from 443
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 172.86.20.5/32
+        - IpProtocol: tcp ## Verify for Httpd 
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 172.86.20.5/32
+        - IpProtocol: tcp
+          FromPort: 8983
+          ToPort: 8983
+          CidrIp: 172.86.40.5/32
+        - IpProtocol: tcp ## Verify for Tomcat  
+          FromPort: 8080
+          ToPort: 8080
+          CidrIp: 172.86.20.5/32
+        - IpProtocol: tcp 
+          FromPort: 8109
+          ToPort: 8109
+          CidrIp: 172.86.20.5/32
+  JumphostVerifityPublicSubnetEc2:
+    Type: AWS::EC2::SecurityGroup
+    Properties: 
+      GroupName: JumphostVerifityPublicSubnetEc2
+      GroupDescription: Jumphost verifty public subnet EC2 Security Group
+      VpcId: !Ref VPCID
+      SecurityGroupIngress:
+        - IpProtocol: -1 ## WEB
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 172.86.10.5/32
+        - IpProtocol: -1 ## VPN
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 172.86.30.5/32
+        - IpProtocol: -1 ## PBX
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 172.86.10.6/32
+  FileSystemSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: FileSystemSecurityGroup
+      GroupDescription: Elastic Files System Mount Access
+      VpcId: !Ref VPCID
+      SecurityGroupIngress:
+        - IpProtocol: tcp ## WEB
+          FromPort: 2049
+          ToPort: 2049
+          SourceSecurityGroupId: !Ref AppToPbxSecurityGroup
+        - IpProtocol: tcp ## WEB
+          FromPort: 2049
+          ToPort: 2049
+          SourceSecurityGroupId: !Ref PbxToAppSecurityGroup
+        - IpProtocol: icmp
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 172.86.10.6/32
+        - IpProtocol: icmp
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 172.86.20.5/32
+  WebServerLoadBalancerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: WebServerLoadBalancerSecurityGroup
+      GroupDescription: Security Group for Load Balancer with public access from all to port 443 and 80
+      VpcId: !Ref VPCID
+      SecurityGroupIngress:
+        - IpProtocol: -1 ## WEB
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: -1 ## WEB
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+Outputs:
+  SecurityGroups:
+    Value: !Join
+        -  ","
+        - - !Ref AppToWebSecurityGroup
+          - !Ref PbxToWebSecurityGroup
+          - !Ref WebToAppSecurityGroup
+          - !Ref PbxToAppSecurityGroup
+          - !Ref AppToPbxSecurityGroup
+          - !Ref VpnToPbxSecurityGroup
+          - !Ref AppToVpnSecurityGroup
+          - !Ref AppToSolrSecurityGroup
+          - !Ref PbxSecurityGroup
+          - !Ref VpnSecurityGroup
+          - !Ref SolrSecurityGroup
+          - !Ref JumpHostSecurityGroup
+          - !Ref JumpHostToAllSecurityGroup
+          - !Ref WindowsJumpHostSecurityGroup
+          - !Ref WindowsJumpHostToAllSecurityGroup
+          - !Ref AppToDbSecurityGroup
+          - !Ref OnPremiseToJumphostSSHSecurityGroup
+          - !Ref OnPremiseToJumphostRDPSecurityGroup
+          - !Ref JumphostToEC2SSHSecurityGroup
+          - !Ref JumphostToEC2RDPSecurityGroup
+          - !Ref JumphostToEC2PingSecurityGroup
+          - !Ref JumphostVerifityPrivateSubnetEc2
+          - !Ref JumphostVerifityPublicSubnetEc2
+          - !Ref FileSystemSecurityGroup
+          - !Ref WebServerLoadBalancerSecurityGroup
+    Export: 
+      Name: !Sub '${AWS::StackName}-SecurityGroups'
+  WebToAppSecurityGroup:
+    Value: !GetAtt 
+      - WebToAppSecurityGroup
+      - GroupId 
+    Export: 
+      Name: !Sub '${AWS::StackName}-WebToAppSecurityGroupID'
+  AppToWebSecurityGroup:
+    Value: !GetAtt 
+      - AppToWebSecurityGroup
+      - GroupId
+    Export: 
+      Name: !Sub '${AWS::StackName}-AppToWebSecurityGroupID'
+  AppToPbxSecurityGroup:
+    Value: !GetAtt 
+      - AppToPbxSecurityGroup
+      - GroupId
+    Export: 
+      Name: !Sub '${AWS::StackName}-AppToPbxSecurityGroupID'
+  AppToVpnSecurityGroup:
+    Value: !GetAtt 
+      - AppToVpnSecurityGroup
+      - GroupId
+    Export: 
+      Name: !Sub '${AWS::StackName}-AppToVpnSecurityGroupID'
+  AppToSolrSecurityGroup:
+    Value: !GetAtt 
+      - AppToSolrSecurityGroup
+      - GroupId
+    Export: 
+      Name: !Sub '${AWS::StackName}-AppToSolrSecurityGroupID'
+  PbxSecurityGroup:
+    Value: !GetAtt 
+      - PbxSecurityGroup
+      - GroupId
+    Export: 
+      Name: !Sub '${AWS::StackName}-PbxSecurityGroupID'
+  PbxToAppSecurityGroup:
+    Value: !GetAtt 
+      - PbxToAppSecurityGroup
+      - GroupId
+    Export: 
+      Name: !Sub '${AWS::StackName}-PbxToAppSecurityGroupID'
+  PbxToWebSecurityGroup:
+    Value: !GetAtt 
+      - PbxToWebSecurityGroup
+      - GroupId
+    Export: 
+      Name: !Sub '${AWS::StackName}-PbxToWebSecurityGroupID'
+  VpnSecurityGroup:
+    Value: !GetAtt 
+      - VpnSecurityGroup
+      - GroupId
+    Export: 
+      Name: !Sub '${AWS::StackName}-VpnSecurityGroupID'
+  VpnToPbxSecurityGroup:
+    Value: !GetAtt 
+      - VpnToPbxSecurityGroup
+      - GroupId
+    Export: 
+      Name: !Sub '${AWS::StackName}-VpnToPbxSecurityGroupID'
+  SolrSecurityGroup:
+    Value: !GetAtt 
+      - SolrSecurityGroup
+      - GroupId
+    Export: 
+      Name: !Sub '${AWS::StackName}-SolrSecurityGroupID'
+  JumpHostSecurityGroup:
+    Value: !GetAtt 
+      - JumpHostSecurityGroup
+      - GroupId
+    Export: 
+      Name: !Sub '${AWS::StackName}-JumpHostSecurityGroupID'
+  JumpHostToAllSecurityGroup:
+    Value: !GetAtt 
+      - JumpHostToAllSecurityGroup
+      - GroupId
+    Export: 
+      Name: !Sub '${AWS::StackName}-JumpHostToAllSecurityGroupID'
+  WindowsJumpHostSecurityGroup:
+    Value: !GetAtt 
+      - WindowsJumpHostSecurityGroup
+      - GroupId
+    Export: 
+      Name: !Sub '${AWS::StackName}-WindowsJumpHostSecurityGroupID'
+  WindowsJumpHostToAllSecurityGroup:
+    Value: !GetAtt 
+      - WindowsJumpHostToAllSecurityGroup
+      - GroupId
+    Export: 
+      Name: !Sub '${AWS::StackName}-WindowsJumpHostToAllSecurityGroupID'
+  AppToDbSecurityGroup:
+    Value: !GetAtt 
+      - AppToDbSecurityGroup
+      - GroupId
+    Export: 
+      Name: !Sub '${AWS::StackName}-AppToDbSecurityGroupID'
+  OnPremiseToJumphostSSHSecurityGroup:
+    Value: !GetAtt 
+      - OnPremiseToJumphostSSHSecurityGroup
+      - GroupId
+    Export: 
+      Name: !Sub '${AWS::StackName}-OnPremiseToJumphostSSHSecurityGroupID'
+  OnPremiseToJumphostRDPSecurityGroup:
+    Value: !GetAtt 
+      - OnPremiseToJumphostRDPSecurityGroup
+      - GroupId
+    Export: 
+      Name: !Sub '${AWS::StackName}-OnPremiseToJumphostRDPSecurityGroupID'
+  JumphostToEC2SSHSecurityGroup:
+    Value: !GetAtt 
+      - JumphostToEC2SSHSecurityGroup
+      - GroupId
+    Export: 
+      Name: !Sub '${AWS::StackName}-JumphostToEC2SSHSecurityGroupID'
+  JumphostToEC2RDPSecurityGroup:
+    Value: !GetAtt 
+      - JumphostToEC2RDPSecurityGroup
+      - GroupId
+    Export: 
+      Name: !Sub '${AWS::StackName}-JumphostToEC2RDPSecurityGroupID'
+  JumphostToEC2PingSecurityGroup:
+    Value: !GetAtt 
+      - JumphostToEC2PingSecurityGroup
+      - GroupId
+    Export: 
+      Name: !Sub '${AWS::StackName}-JumphostToEC2PingSecurityGroupID'
+  JumphostVerifityPrivateSubnetEc2:
+    Value: !GetAtt 
+      - JumphostVerifityPrivateSubnetEc2
+      - GroupId
+    Export: 
+      Name: !Sub '${AWS::StackName}-JumphostVerifityPrivateSubnetEc2ID'
+  JumphostVerifityPublicSubnetEc2:
+    Value: !GetAtt 
+      - JumphostVerifityPublicSubnetEc2
+      - GroupId
+    Export: 
+      Name: !Sub '${AWS::StackName}-JumphostVerifityPublicSubnetEc2ID'
+  FileSystemSecurityGroup:
+    Value: !GetAtt 
+      - FileSystemSecurityGroup
+      - GroupId
+    Export: 
+      Name: !Sub '${AWS::StackName}-FileSystemSecurityGroupID'
+  WebServerLoadBalancerSecurityGroup:
+    Value: !GetAtt 
+      - WebServerLoadBalancerSecurityGroup
+      - GroupId
+    Export: 
+      Name: !Sub '${AWS::StackName}-WebServerLoadBalancerSecurityGroupID'
+
+      

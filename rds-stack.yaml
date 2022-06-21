@@ -1,0 +1,266 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'State: RDS Postgres, a cloudonaut.io template, sponsored by https://github.com/ngault'
+Metadata:
+  'AWS::CloudFormation::Interface':
+    ParameterGroups:
+    - Label:
+        default: 'Parent Stacks'
+      Parameters:
+      - ParentKmsKeyStack
+      - ParentZoneStack
+      - ParentSSHBastionStack
+      - ParentAlertStack
+      - ParentSecretStack
+    - Label:
+        default: 'RDS Parameters'
+      Parameters:
+      - DBSnapshotIdentifier
+      - EngineVersion
+      - DBAllocatedStorage
+      - DBInstanceClass
+      - DBName
+      - DBBackupRetentionPeriod
+      - DBMasterUsername
+      - DBMasterUserPassword
+      - DBMultiAZ
+      - DBOptionGroupName
+      - DBParameterGroupName
+      - SubDomainNameWithDot
+      - PreferredBackupWindow
+      - PreferredMaintenanceWindow
+      - EnableIAMDatabaseAuthentication
+Parameters:
+  Owner:
+    Type: String
+    Default: Innovax Systems
+  Project:
+    Type: String
+    Default: OpsCentral-SIT
+  EnvironmentName:
+    Description: An environment name that is prefixed to resource names
+    Type: String
+    Default: SIT
+  CreatedBy:
+    Description: An environment name that is prefixed to resource names
+    Type: String
+    Default: CloudFormation
+  VPCID:
+    Type: AWS::EC2::VPC::Id
+    Description: Enter a valid VPC Id
+  ClusterName:
+    Type: String
+    Description: Name of cluster
+  SecurityGroups:
+    Type: CommaDelimitedList
+    Description: List of securitygroups ids
+  PublicSubnets:
+    Type: CommaDelimitedList
+    Description: List of public subnet ids
+  PrivateSubnets:
+    Type: CommaDelimitedList
+    Description: List of private subnet ids  
+  ParentKmsKeyStack:
+    Description: Name of an existing EC2 KeyPair to enable SSH access to the instance
+    Type: AWS::EC2::KeyPair::KeyName
+    ConstraintDescription: must be the name of an existing EC2 KeyPair. 
+    Default: sit-opscentral-key
+  ParentZoneStack:
+    Description: 'Optional stack name of parent zone stack based on vpc/vpc-zone-*.yaml template.'
+    Type: String
+    Default: ''
+  ParentSSHBastionStack:
+    Description: 'Optional but recommended stack name of parent SSH bastion host/instance stack based on vpc/vpc-*-bastion.yaml template.'
+    Type: String
+    Default: ''
+  ParentAlertStack:
+    Description: 'Optional but recommended stack name of parent alert stack based on operations/alert.yaml template.'
+    Type: String
+    Default: ''
+  ParentSecretStack:
+    Description: 'Optional Stack name of parent SecretsManager Secret Stack based on state/secretsmanager-dbsecret.yaml template.'
+    Type: String
+    Default: ''
+  DBSnapshotIdentifier:
+    Description: 'Optional name or Amazon Resource Name (ARN) of the DB snapshot from which you want to restore (leave blank to create an empty database).'
+    Type: String
+    Default: ''
+  DBAllocatedStorage:
+    Description: 'The allocated storage size, specified in GB (ignored when DBSnapshotIdentifier is set, value used from snapshot).'
+    Type: Number
+    Default: 50
+    MinValue: 5
+    MaxValue: 16384
+  DBInstanceClass:
+    Description: 'The instance type of database server.'
+    Type: String
+    Default: 'db.t3.medium' #2 vCPU 4GB RAM
+  DBName:
+    Description: 'Name of the database (ignored when DBSnapshotIdentifier is set, value used from snapshot).'
+    Type: String
+    Default: 'postgres'
+  DBBackupRetentionPeriod:
+    Description: 'The number of days to keep snapshots of the database.'
+    Type: Number
+    MinValue: 0
+    MaxValue: 35
+    Default: 30
+  DBMasterUsername:
+    Description: 'The master user name for the DB instance (ignored when DBSnapshotIdentifier is set, value used from snapshot).'
+    Type: String
+    Default: innovax
+  DBMasterUserPassword:
+    Description: 'The master password for the DB instance (ignored when DBSnapshotIdentifier is set, value used from snapshot. Also ignored when ParentSecretStack is used).'
+    Type: String
+    NoEcho: true
+    Default: Isadmin1888$
+  DBMultiAZ:
+    Description: 'Specifies if the database instance is deployed to multiple Availability Zones for HA.'
+    Type: String
+    Default: true
+    AllowedValues: [true, false]
+  DBOptionGroupName:
+    Description: 'Optional name of an existing DB option group.'
+    Type: String
+    Default: ''
+  DBParameterGroupName:
+    Description: 'Optional name of an existing DB parameter group.'
+    Type: String
+    Default: ''
+  SubDomainNameWithDot:
+    Description: 'Name that is used to create the DNS entry with trailing dot, e.g. §{SubDomainNameWithDot}§{HostedZoneName}. Leave blank for naked (or apex and bare) domain. Requires ParentZoneStack parameter!'
+    Type: String
+    Default: 'postgres.'
+  PreferredBackupWindow:
+    Description: 'The daily time range in UTC during which you want to create automated backups.'
+    Type: String
+    Default: '09:54-10:24'
+  PreferredMaintenanceWindow:
+    Description: The weekly time range (in UTC) during which system maintenance can occur.
+    Type: String
+    Default: 'sat:07:00-sat:07:30'
+  EngineVersion:
+    Description: 'PostgreSQL version.'
+    Type: String
+    Default: '13.6'
+    AllowedValues: ['9.6.9', '9.6.11', '9.6.15', '9.6.22', '9.6.23', '9.6.24', '10.17', '10.18', '10.19', '11.1', '11.4', '11.5', '11.6', '11.8', '11.10', '11.12', '11.13', '11.14', '12.6', '12.7', '12.8', '12.9', '13.3', '13.4', '13.5', '13.6', '14.1'] # aws rds describe-db-engine-versions --engine postgres --query "DBEngineVersions[].EngineVersion"
+  EnableIAMDatabaseAuthentication:
+    Description: 'Enable mapping of AWS Identity and Access Management (IAM) accounts to database accounts (https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/UsingWithRDS.IAMDBAuth.html).'
+    Type: String
+    AllowedValues: ['true', 'false']
+    Default: 'false'
+  VpcStackName:
+    Description: The name of the stack that exports the values
+    Type: String
+    Default: sit-cluster-VpcStack-144ZCSEFE3MN0
+  SecurityGroupStackName:
+    Description: The name of the stack that exports the values
+    Type: String
+    Default: sit-cluster-SecurityStack-1EYLHUZSOVKK0
+Conditions:
+  HasSecret: !Not [!Equals [!Ref ParentSecretStack, '']]
+  HasKmsKey: !Not [!Equals [!Ref ParentKmsKeyStack, '']]
+  HasZone: !Not [!Equals [!Ref ParentZoneStack, '']]
+  HasSSHBastionSecurityGroup: !Not [!Equals [!Ref ParentSSHBastionStack, '']]
+  HasAlertTopic: !Not [!Equals [!Ref ParentAlertStack, '']]
+  HasDBSnapshotIdentifier: !Not [!Equals [!Ref DBSnapshotIdentifier, '']]
+  HasDBOptionGroupName: !Not [!Equals [!Ref DBOptionGroupName, '']]
+  HasDBParameterGroupName: !Not [!Equals [!Ref DBParameterGroupName, '']]
+  HasKmsKeyAndNotDBSnapshotIdentifier: !And [!Condition HasKmsKey, !Not [!Condition HasDBSnapshotIdentifier]]
+Resources:
+#  SecretTargetAttachment:
+#    Condition: HasSecret
+#    Type: 'AWS::SecretsManager::SecretTargetAttachment'
+#    Properties:
+#      TargetId: !Ref DBInstance
+#      SecretId: {'Fn::ImportValue': !Sub '${ParentSecretStack}-SecretArn'}
+#      TargetType: 'AWS::RDS::DBInstance'
+#  RecordSet:
+#    Condition: HasZone
+#    Type: 'AWS::Route53::RecordSet'
+#    Properties:
+#      HostedZoneId: {'Fn::ImportValue': !Sub '${ParentZoneStack}-HostedZoneId'}
+#      Name: !Sub
+#      - '${SubDomainNameWithDot}${HostedZoneName}'
+#      - SubDomainNameWithDot: !Ref SubDomainNameWithDot
+#        HostedZoneName: {'Fn::ImportValue': !Sub '${ParentZoneStack}-HostedZoneName'}
+#      ResourceRecords:
+#      - !GetAtt 'DBInstance.Endpoint.Address'
+#      TTL: 60
+#      Type: CNAME
+#  DatabaseSecurityGroup:
+#    Type: 'AWS::EC2::SecurityGroup'
+#    Properties:
+#      GroupDescription: !Ref 'AWS::StackName'
+#      VpcId: {'Fn::ImportValue': !Sub '${ParentVPCStack}-VPC'}
+#      SecurityGroupIngress:
+#      - IpProtocol: tcp
+#        FromPort: 5432
+#        ToPort: 5432
+#        SourceSecurityGroupId: {'Fn::ImportValue': !Sub '${ParentClientStack}-ClientSecurityGroup'}
+#  DatabaseSecurityGroupInSSHBastion:
+#    Type: 'AWS::EC2::SecurityGroupIngress'
+#    Condition: HasSSHBastionSecurityGroup
+#    Properties:
+#      GroupId: !Ref DatabaseSecurityGroup
+#      IpProtocol: tcp
+#      FromPort: 5432
+#      ToPort: 5432
+#      SourceSecurityGroupId: {'Fn::ImportValue': !Sub '${ParentSSHBastionStack}-SecurityGroup'}
+  DBSubnetGroup:
+    Type: 'AWS::RDS::DBSubnetGroup'
+    Properties:
+      DBSubnetGroupDescription: !Ref 'AWS::StackName'
+      SubnetIds: 
+      - Fn::ImportValue: !Sub '${VpcStackName}-SitPrivateSubnet1'
+      - Fn::ImportValue: !Sub '${VpcStackName}-SitPrivateSubnet2'
+  RdsPostgreSql:
+    DeletionPolicy: Snapshot # default
+    UpdateReplacePolicy: Snapshot
+    Type: 'AWS::RDS::DBInstance'
+    Properties:
+      AllocatedStorage: !If [HasDBSnapshotIdentifier, !Ref 'AWS::NoValue', !Ref DBAllocatedStorage]
+      AllowMajorVersionUpgrade: false
+      AutoMinorVersionUpgrade: true
+      BackupRetentionPeriod: !Ref DBBackupRetentionPeriod
+      CopyTagsToSnapshot: true
+      DBInstanceClass: !Ref DBInstanceClass # change according to your needs/ can use free tier
+      DBName: !If [HasDBSnapshotIdentifier, !Ref 'AWS::NoValue', !Ref DBName]
+      DBParameterGroupName: !If [HasDBParameterGroupName, !Ref DBParameterGroupName, !Ref 'AWS::NoValue']
+      DBSnapshotIdentifier: !If [HasDBSnapshotIdentifier, !Ref DBSnapshotIdentifier, !Ref 'AWS::NoValue']
+      DBSubnetGroupName: !Ref DBSubnetGroup
+      EnableIAMDatabaseAuthentication: !Ref EnableIAMDatabaseAuthentication
+      Engine: postgres
+      EngineVersion: !If [HasDBSnapshotIdentifier, !Ref 'AWS::NoValue', !Ref EngineVersion]
+      MasterUsername: !If [HasDBSnapshotIdentifier, !Ref 'AWS::NoValue', !Ref DBMasterUsername]
+      MasterUserPassword: !Ref DBMasterUserPassword
+      MultiAZ: !Ref DBMultiAZ
+      OptionGroupName: !If [HasDBOptionGroupName, !Ref DBOptionGroupName, !Ref 'AWS::NoValue']
+      PreferredBackupWindow: !Ref PreferredBackupWindow
+      PreferredMaintenanceWindow: !Ref PreferredMaintenanceWindow
+      StorageType: gp2
+      StorageEncrypted: true
+      VPCSecurityGroups:
+      - Fn::ImportValue: !Sub '${SecurityGroupStackName}-AppToDbSecurityGroupID'
+      Tags:
+      - Key: Name
+        Value: !Join [ "", [ !Ref "AWS::StackName", "-Rds-PostgreSQL" ] ]
+      - Key: Owner
+        Value: !Ref Owner
+      - Key: Project
+        Value: !Ref Project
+      - Key: Environment
+        Value: !Ref EnvironmentName
+      - Key: Created By
+        Value: !Ref CreatedBy
+Outputs:
+  TemplateID:
+    Description: 'cloudonaut.io template id.'
+    Value: 'state/rds-postgres'
+  StackName:
+    Description: 'Stack name.'
+    Value: !Sub '${AWS::StackName}'
+  RdsPostgreSql:
+    Description: 'The name of the database instance.'
+    Value: !Ref RdsPostgreSql
+    Export:
+      Name: !Sub '${AWS::StackName}-RdsPostgreSql'
